@@ -7,8 +7,8 @@ const { expect } = require("chai");
 const hre = require("hardhat");
 const { ethers } = hre;
 
-// describe.only("Utils", function () {
-describe("Utils", function () {
+describe.only("Utils", function () {
+  // describe("Utils", function () {
   const zeroAddress = "0x" + "0".repeat(40);
   const toChecksum = (address) => {
     return ethers.getAddress(address);
@@ -142,6 +142,10 @@ describe("Utils", function () {
       params[6]
     );
     console.log("Utils / SMC / Message Hash", msgHashed);
+    console.log(
+      "Utils / SMC / Message Hash convert in bytesArray",
+      ethers.getBytes(msgHashed)
+    );
     // 2. get the keccak256 hash of the msg hash with prefix
     const prefixedMsgHashed = await Utils.prefixed(msgHashed);
     console.log("Utils / SMC / Prefixed Message Hash", prefixedMsgHashed);

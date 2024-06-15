@@ -84,11 +84,12 @@ import "./Utils.sol";
 // error BridgeBase__DepositTokenWithNonZeroValue();
 // error BridgeBase__DepositTokenWithInsufficientBalance();
 // error BridgeBase__DepositTokenWithInsufficientAllowance();
-error BridgeBase__DepositFailed(string message);
-error BridgeBase__FinalizationFailed(string message);
-error BridgeBase__UnlockFailed(string message);
 
-contract BridgeBase is Utils {
+// error BridgeBase__DepositFailed(string message);
+// error BridgeBase__FinalizationFailed(string message);
+// error BridgeBase__UnlockFailed(string message);
+
+contract BridgeBase_ORIGIN is Utils {
     enum FeesType {
         PROTOCOL,
         OPERATION
@@ -439,51 +440,18 @@ contract BridgeBase is Utils {
         return simulatedOpFees;
     }
 
-    // // should be receive or fallback !! to save gas
-    // function depositFees(
-    //     bytes32 operationHash,
-    //     // OperationParams calldata operationParams,
-    //     uint256 chainIdFrom, // if we change the storage to have the chainId as first key
-    //     uint256 chainIdTo
-    // )
-    //     // uint256 initBlock, // ??
-    //     // uint256 confirmationBlock // ??
-    //     external
-    //     payable
-    // {
-    //     address relayer = Storage(s_storage).getOperator("relayer");
-    //     require(
-    //         !RelayerBase(relayer).isDestinationOperationExist(operationHash), "RelayerBase: operation already exists"
-    //     );
-
-    //     // address tokenTOADD = address(0);
-    //     uint256 fees = computeFees();
-    //     require(msg.value == fees, "RelayerBase: invalid fees");
-
-    //     Vault vault = Vault(Storage(s_storage).getOperator("vault"));
-    //     try vault.depositOperationFee{value: msg.value}() {
-    //         RelayerBase(relayer).lockDestinationFees(operationHash, chainIdFrom, chainIdTo);
-    //     } catch {
-    //         RelayerBase(relayer).emitCancelOperation(operationHash, chainIdFrom, chainIdTo);
-    //     }
-    // }
-
+    // should be receive or fallback !! to save gas
     function depositFees(
-        // bytes32 operationHash,
-        address from,
-        address to,
-        uint256 chainIdFrom,
-        uint256 chainIdTo,
-        string memory tokenName,
-        uint256 amount,
-        uint256 nonce
+        bytes32 operationHash,
+        // OperationParams calldata operationParams,
+        uint256 chainIdFrom, // if we change the storage to have the chainId as first key
+        uint256 chainIdTo
     )
         // uint256 initBlock, // ??
         // uint256 confirmationBlock // ??
         external
         payable
     {
-        bytes32 operationHash;
         address relayer = Storage(s_storage).getOperator("relayer");
         require(
             !RelayerBase(relayer).isDestinationOperationExist(operationHash), "RelayerBase: operation already exists"
@@ -495,7 +463,7 @@ contract BridgeBase is Utils {
 
         Vault vault = Vault(Storage(s_storage).getOperator("vault"));
         try vault.depositOperationFee{value: msg.value}() {
-            RelayerBase(relayer).lockDestinationFees(from, to, chainIdFrom, chainIdTo, tokenName, amount, nonce);
+            // RelayerBase(relayer).lockDestinationFees(operationHash, chainIdFrom, chainIdTo);
         } catch {
             RelayerBase(relayer).emitCancelOperation(operationHash, chainIdFrom, chainIdTo);
         }

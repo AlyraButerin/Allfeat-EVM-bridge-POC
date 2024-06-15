@@ -109,7 +109,7 @@ async function main() {
 
   // get deployed Utils
   // @todo CODE GET NONCE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  let nonce = 7; //3; //2; // 1; //0; //1; // 0;
+  let nonce = 2; //0; //7; //3; //2; // 1; //0; //1; // 0;
   const msgHashed = await bridge.getMessageHash(
     userWallet.address,
     userWallet.address,

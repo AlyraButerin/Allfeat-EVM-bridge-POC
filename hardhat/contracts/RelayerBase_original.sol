@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 
+// BACKUP ORIGINAL FILE 15.06
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -16,7 +17,7 @@ import "hardhat/console.sol";
  * @dev confirm is called to confirm a tx when called by the oracle/server (to forward fees event)
  * @dev when these 2 conditions are met the bridge event is emitted
  */
-contract RelayerBase is Utils {
+contract RelayerBase_ORIGINE is Utils {
     /* errors */
     enum FeesType {
         PROTOCOL,
@@ -108,10 +109,7 @@ contract RelayerBase is Utils {
 
     // TEST 15.06 to avoid external call on allfeat => set storage instead of calling storgae contract
     uint256 public constant BLOCK_TO_WAIT_ALLFEAT = 2;
-    uint256 public constant BLOCK_TO_WAIT_SEPOLIA = 6;
-    uint256 public constant BLOCK_TO_WAIT_DEFAULT = 2;
-    bytes32 public lastOriginHash;
-    bytes32 public lastDestinationHash;
+    uint256 public constant BLOCK_TO_WAIT_DEFAULT = 6;
 
     /* events */
 
@@ -212,7 +210,7 @@ contract RelayerBase is Utils {
         // bytes32 operationHash = computeOperationHash(from, to, chainIdFrom, chainIdTo, tokenName, amount, nonce);
         // bytes32 operationHash = getPrefixedMessageHash(from, to, chainIdFrom, chainIdTo, tokenName, amount, nonce);
         bytes32 operationHash = getMessageHash(from, to, chainIdFrom, chainIdTo, tokenName, amount, nonce);
-        lastOriginHash = operationHash;
+
         require(
             s_originOperations[operationHash].status == OperationStatus.NONE, "RelayerBase: operation already exists"
         );
@@ -304,12 +302,12 @@ contract RelayerBase is Utils {
         OperationParams calldata params,
         uint256 blockStep
     ) external {
-        // bytes32 key = Storage(s_storage).getKey("blockToWait", block.chainid);
-        // uint256 blockToWait = Storage(s_storage).getUint(key);
+        bytes32 key = Storage(s_storage).getKey("blockToWait", block.chainid);
+        uint256 blockToWait = Storage(s_storage).getUint(key);
         OriginOperation storage operation = s_originOperations[operationHash];
 
-        // require(block.number >= operation.blockStep.creationBlock + BLOCK_TO_WAIT_DEFAULT, "RelayerBase: block not reached");
-        // require(operation.status == OperationStatus.ORG_FEES_LOCKED, "RelayerBase: invalid status");
+        require(block.number >= operation.blockStep.creationBlock + blockToWait, "RelayerBase: block not reached");
+        require(operation.status == OperationStatus.ORG_FEES_LOCKED, "RelayerBase: invalid status");
 
         operation.status = OperationStatus.ORG_OP_READY;
         operation.blockStep.processingBlock = uint64(block.number);
@@ -363,44 +361,12 @@ contract RelayerBase is Utils {
 
     // We don't check signature here cause we perhaps won't keep this function in the final version making
     // all the fees management in the first tx of origin chain
-    // function lockDestinationFees(
-    //     bytes32 operationHash,
-    //     // OperationParams calldata operationParams,
-    //     uint256 chainIdFrom, // if we change the storage to have the chainId as first key,
-    //     uint256 chainIdTo
-    // ) external payable onlyBridge {
-    //     require(
-    //         s_destinationOperations[operationHash].status == OperationStatus.NONE,
-    //         "RelayerBase: operation already exists"
-    //     );
-
-    //     DestinationOperation memory newOperation;
-    //     DestinationBlockStep memory blockStep;
-    //     blockStep.feesDeposit = uint64(block.number);
-
-    //     newOperation.params.chainIdFrom = chainIdFrom;
-    //     newOperation.params.chainIdTo = chainIdTo;
-    //     newOperation.status = OperationStatus.DST_FEES_DEPOSITED;
-
-    //     // emit FeesDeposited(operationHash, chainIdFrom); // event name //c chainIdTo pour lr rappeler// block.number
-    //     // HCKTON add for uml server spec
-    //     OperationParams memory params = newOperation.params;
-
-    //     emit FeesDeposited(operationHash, params, block.number);
-    //     s_destinationOperations[operationHash] = newOperation;
-    //     s_destinationOperationsList.push(operationHash);
-    // }
     function lockDestinationFees(
-        address from,
-        address to,
-        uint256 chainIdFrom,
-        uint256 chainIdTo,
-        string memory tokenName,
-        uint256 amount,
-        uint256 nonce
+        bytes32 operationHash,
+        // OperationParams calldata operationParams,
+        uint256 chainIdFrom, // if we change the storage to have the chainId as first key,
+        uint256 chainIdTo
     ) external payable onlyBridge {
-        bytes32 operationHash = getMessageHash(from, to, chainIdFrom, chainIdTo, tokenName, amount, nonce);
-        lastDestinationHash = operationHash;
         require(
             s_destinationOperations[operationHash].status == OperationStatus.NONE,
             "RelayerBase: operation already exists"
@@ -431,12 +397,12 @@ contract RelayerBase is Utils {
         onlyOracle
     {
         DestinationOperation storage operation = s_destinationOperations[operationHash];
-        //1. test without require
-        //2. then with require without external call
-        // require(operation.status == OperationStatus.DST_FEES_DEPOSITED, "RelayerBase: invalid status");
-        // require(
-        //     block.number - operation.blockStep.feesDeposit > BLOCK_TO_WAIT_DEFAULT, "RelayerBase: block not reached"
-        // );
+        require(operation.status == OperationStatus.DST_FEES_DEPOSITED, "RelayerBase: invalid status");
+        require(
+            block.number - operation.blockStep.feesDeposit
+                > Storage(s_storage).getUint(Storage(s_storage).getKey("blockToWait", operation.params.chainIdTo)),
+            "RelayerBase: block not reached"
+        );
 
         operation.status = OperationStatus.DST_FEES_CONFIRMED;
         operation.blockStep.feesConfirmation = uint64(block.number);
@@ -601,13 +567,5 @@ contract RelayerBase is Utils {
         returns (DestinationOperation memory operation)
     {
         return s_destinationOperations[operationHash];
-    }
-
-    function getLastOriginHash() external view returns (bytes32) {
-        return lastOriginHash;
-    }
-
-    function getLastDestinationHash() external view returns (bytes32) {
-        return lastDestinationHash;
     }
 }

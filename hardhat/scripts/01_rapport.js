@@ -95,54 +95,79 @@ async function main() {
   let tokenNames = ["allfeat", "ethereum", "dai"];
   let tokenSymbols = ["AFT", "ETH", "DAI", "abETH", "abDAI", "ebAFT"];
 
-  console.log(
-    "---------------------------------\ntoken data in storage\n---------------------------------"
-  );
-  let tAddress = await storage.getTokenAddressByChainId("ethereum", "441");
-  console.log(
-    "SEOPLIA storage side : ethereum symb/add on allfeat: abETH/",
-    tAddress
-  );
-  tAddress = await storage.getTokenAddressByChainId("ethereum", "11155111");
-  console.log(
-    "SEOPLIA storage side : ethereum symb/add on sepolia: ETH/",
-    tAddress
-  );
-  tAddress = await storage.getTokenAddressByChainId("allfeat", "441");
-  console.log(
-    "SEOPLIA storage side : allfeat symb/add on allfeat: AFT/",
-    tAddress
-  );
-  tAddress = await storage.getTokenAddressByChainId("allfeat", "11155111");
-  console.log(
-    "SEOPLIA storage side : allfeat symb/add on sepolia: ebAFT/",
-    tAddress
-  );
-  tAddress = await storage.getTokenAddressByChainId("dai", "441");
-  console.log(
-    "SEOPLIA storage side : dai symb/add on allfeat: abDAI/",
-    tAddress
-  );
-  tAddress = await storage.getTokenAddressByChainId("dai", "11155111");
-  console.log("SEOPLIA storage side : dai symb/add on sepolia: DAI/", tAddress);
+  // console.log(
+  //   "---------------------------------\ntoken data in storage\n---------------------------------"
+  // );
+  // let tAddress = await storage.getTokenAddressByChainId("ethereum", "441");
+  // console.log(
+  //   "SEOPLIA storage side : ethereum symb/add on allfeat: abETH/",
+  //   tAddress
+  // );
+  // tAddress = await storage.getTokenAddressByChainId("ethereum", "11155111");
+  // console.log(
+  //   "SEOPLIA storage side : ethereum symb/add on sepolia: ETH/",
+  //   tAddress
+  // );
+  // tAddress = await storage.getTokenAddressByChainId("allfeat", "441");
+  // console.log(
+  //   "SEOPLIA storage side : allfeat symb/add on allfeat: AFT/",
+  //   tAddress
+  // );
+  // tAddress = await storage.getTokenAddressByChainId("allfeat", "11155111");
+  // console.log(
+  //   "SEOPLIA storage side : allfeat symb/add on sepolia: ebAFT/",
+  //   tAddress
+  // );
+  // tAddress = await storage.getTokenAddressByChainId("dai", "441");
+  // console.log(
+  //   "SEOPLIA storage side : dai symb/add on allfeat: abDAI/",
+  //   tAddress
+  // );
+  // tAddress = await storage.getTokenAddressByChainId("dai", "11155111");
+  // console.log("SEOPLIA storage side : dai symb/add on sepolia: DAI/", tAddress);
 
-  console.log(
-    "---------------------------------\nother data\n---------------------------------"
-  );
+  // console.log(
+  //   "---------------------------------\nother data\n---------------------------------"
+  // );
   let bridgeAddress = await readLastDeployedAddress(network, "BridgeBase");
   let bridge = await hre.ethers.getContractAt("BridgeBase", bridgeAddress);
 
   let nonce = await bridge.getNewUserNonce(userAddress);
   console.log("SEOPLIA bridge side : user nonce", nonce);
 
+  // console.log(
+  //   "---------------------------------\ndebug test\n---------------------------------"
+  // );
+  // let testTAddress = await storage.getTokenAddressByChainId("ETH", "11155111");
+  // console.log(
+  //   "SEOPLIA storage side (DEBUG) : ETH symb/add on sepolia: ETH/",
+  //   testTAddress
+  // );
   console.log(
-    "---------------------------------\ndebug test\n---------------------------------"
+    "---------------------------------\ndebug PARAMS& HASHt\n---------------------------------"
   );
-  let testTAddress = await storage.getTokenAddressByChainId("ETH", "11155111");
-  console.log(
-    "SEOPLIA storage side (DEBUG) : ETH symb/add on sepolia: ETH/",
-    testTAddress
+  let relayerAddress = await readLastDeployedAddress(network, "RelayerBase");
+  let relayer = await hre.ethers.getContractAt("RelayerBase", relayerAddress);
+  let amount = 10_000_000_000_000_000n;
+  let lastNonce = nonce - 1n;
+  let trueNonce = 2;
+  const msgHashed = await bridge.getMessageHash(
+    userAddress,
+    userAddress,
+    11155111,
+    441,
+    "ethereum",
+    amount,
+    trueNonce
   );
+  console.log("user address", userAddress);
+  console.log("nonce old", lastNonce);
+  console.log("relayer address", relayerAddress);
+  console.log("operationHas ==> ", msgHashed);
+  let currentStatus = await relayer.getOriginOperationStatus(msgHashed);
+  console.log("_n==>  STATUS : ", currentStatus);
+  let currentParams = await relayer.getDetailedOriginOperation(msgHashed);
+  console.log("_n==>  PARAMS : ", currentParams);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
