@@ -12,6 +12,7 @@ error Storage__TokenAlreadyInList(string tokenName);
 error Storage__ChainIdAlreadyInList(uint256 chainId);
 error Storage__TokenAddressAlreadySet(string tokenName, uint256 chainId);
 error Storage__TokenAddressNotSet(string tokenName, uint256 chainId);
+error Storage__StringLongerThan32Bytes();
 
 /**
  * @title Storage
@@ -29,6 +30,7 @@ contract Storage {
     //****************************************************************** */
 
     address constant MAX_ADDRESS = address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF);
+    bytes32 constant NON_COMPOSITE_KEY = bytes32("NON_COMPOSITE_KEY");
 
     mapping(bytes32 => uint256) internal s_uintStorage;
     mapping(bytes32 => bytes32) internal s_bytes32Storage;
@@ -99,16 +101,22 @@ contract Storage {
     //                                   KEY GENERATORS
     //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // @todo Clean key generators when refactoring done
+    // @todo Only bytes32 inputs or keep readable types inputs ?
+    // bytes32 may be more gas efficient / in any case remove dynamic types from payload
     /**
      * @notice Computes a storage key by hashing the provided string 'key'.
      *
+     * @dev Non composite key version
+     * @dev Add a constant as a second label to avoid collision with composite key
      * @dev This function uses the keccak256 hashing algorithm to generate a unique storage key.
      *
      * @param key The string representation of the key to store in the eternal storage.
      * @return bytes32 The hashed representation of the storage key.
      */
     function getKey(string memory key) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(key));
+        // return keccak256(abi.encodePacked(key));
+        return _getKey(_stringToBytes32(key), NON_COMPOSITE_KEY);
     }
 
     // @todo: 1 dynamic key and one inferior to 32 bytes
@@ -121,6 +129,7 @@ contract Storage {
     /**
      * @notice Computes a hash of a composite key formed by the provided 'key' and an Ethereum address.
      *
+     * @dev Composite key version (to behave like a mapping of mapping)
      * @dev This function combines the string 'key' and the address into a single value,
      *      then hashes it using keccak256 to create a unique identifier for that specific key and address combination.
      *
@@ -129,12 +138,14 @@ contract Storage {
      * @return bytes32 The hashed representation of the composite key (key + address).
      */
     function getKey(string memory key, address addr) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(key, addr));
+        // return keccak256(abi.encodePacked(key, addr));
+        return _getKey(_stringToBytes32(key), bytes32(uint256(uint160(addr))));
     }
 
     /**
      * @notice Computes a hash of a composite key formed by the provided 'key' and a uint256 number.
      *
+     * @dev Composite key version (to behave like a mapping of mapping)
      * @dev This function combines the string 'key' and the number into a single value,
      *      then hashes it using keccak256 to create a unique identifier for that specific key and number combination.
      *
@@ -143,9 +154,37 @@ contract Storage {
      * @return bytes32 The hashed representation of the composite key (key + number).
      */
     function getKey(string memory key, uint256 number) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(key, number));
+        // return keccak256(abi.encodePacked(key, number));
+        return _getKey(_stringToBytes32(key), bytes32(number));
     }
 
+    // @todo clean key generators when refactoring done
+    // @todo if keeping it private move the code in the file
+    /**
+     * @notice Computes a hash of a composite key formed by the provided 'label1' and 'label2'.
+     *
+     * @dev This function combines the two labels into a single value,
+     *      then hashes it using keccak256 to create a unique identifier for that specific label combination.
+     * @dev Assembly save about 300 gas, equiv to: keccak256(abi.encode(label1, label2))
+     *
+     * @param label1 The first bytes32 label to hash.
+     * @param label2 The second bytes32 label to hash.
+     * @return key (bytes32) The hashed representation of the composite key (label1 + label2).
+     */
+    function _getKey(bytes32 label1, bytes32 label2) private pure returns (bytes32 key) {
+        assembly {
+            mstore(0x00, label1)
+            mstore(0x20, label2)
+            key := keccak256(0x00, 0x40)
+        }
+    }
+
+    function _stringToBytes32(string memory str) private pure returns (bytes32) {
+        if (bytes(str).length > 32) {
+            revert Storage__StringLongerThan32Bytes();
+        }
+        return bytes32(bytes(str));
+    }
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     //                                   DATA GETTERS BY TYPE
@@ -157,6 +196,7 @@ contract Storage {
      * @param key The bytes32 key associated with the uint256 value.
      * @return uint256 The stored uint256 value.
      */
+
     function getUint(bytes32 key) public view returns (uint256) {
         return s_uintStorage[key];
     }

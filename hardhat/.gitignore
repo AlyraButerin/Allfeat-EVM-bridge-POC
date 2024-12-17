@@ -26,3 +26,5 @@ artifacts
 build
 cache
 
+# Dev files
+MEMO.md
